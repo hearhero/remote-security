@@ -1,5 +1,5 @@
-#ifndef _LED_H_
-#define _LED_H_
+#ifndef __LED_H__
+#define __LED_H__
 
 #define LED_MAGIC 'k'
 

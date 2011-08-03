@@ -1,21 +1,42 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <sys/types.h>
+#include <unistd.h>
+#include <pthread.h>
 #include <sys/ioctl.h>
 
 #include "led.h"
+#include "main.h"
 
 void *led_thread_handler(void *arg)
 {
-	int fd;
+	int led_flag = 0;
 
-	if (0 > (fd = open("/dev/LED", O_RDWR)))
+	while (1)
 	{
-		perror("Failed to open LED");
-		exit(-1);
-	}
+		pthread_mutex_lock(&SHM->led_mutex_start);
 
-	ioctl(fd, LED_ON, 0);
-	close(fd);
+		while (0 == SHM->led_emit_start)
+		{
+			pthread_cond_wait(&SHM->led_cond_start, &SHM->led_mutex_start);
+		}
+
+		led_flag = SHM->led_emit_status;
+
+		if (0 < led_flag)
+		{
+			SHM->led_emit_status--;
+		}
+
+		SHM->led_emit_start--;
+		pthread_mutex_unlock(&SHM->led_mutex_start);
+
+		if (0 == led_flag)
+		{
+			ioctl(*((int *)arg), LED_OFF, 0);
+		}
+		else if (1 == led_flag)
+		{
+			ioctl(*((int *)arg), LED_ON, 0);
+		}
+
+		usleep(100000);
+	}
 }

@@ -1,9 +1,8 @@
-#ifndef _GPRS_H_
-#define _GPRS_H_
+#ifndef __GPRS_H__
+#define __GPRS_H__
 
 #include <termios.h>
 #include <stdbool.h>
-#include <unistd.h>
 
 bool termios_init(int fd, struct termios *tio, int baud);
 bool gprs_init(int fd, const char *cmd[], int count);
