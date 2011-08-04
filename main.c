@@ -55,12 +55,13 @@ int main(int argc, char *argv[])
 	pthread_condattr_t alarm_cond_start_attr;
 	pthread_mutexattr_t gprs_mutex_end_attr;
 	pthread_condattr_t gprs_cond_end_attr;
-	pthread_mutexattr_t led_mutex_status_attr;
-	pthread_condattr_t led_cond_status_attr;
+	pthread_mutexattr_t beep_mutex_start_attr;
+	pthread_condattr_t beep_cond_start_attr;
+	pthread_mutexattr_t beep_mutex_status_attr;
 	pthread_mutexattr_t led_mutex_start_attr;
 	pthread_condattr_t led_cond_start_attr;
 	int fd_serial, fd_phone, fd_ada;
-	int fd_keyboard, fd_led, fd_beep;
+	int fd_keyboard, fd_led, fd_beep, fd_adc;
 	struct termios uart;
 
 	init_daemon();
@@ -87,8 +88,10 @@ int main(int argc, char *argv[])
 
 	SHM->alarm_emit_start = 0;
 	SHM->gprs_emit_end = 0;
-	SHM->led_emit_status = 0;
 	SHM->led_emit_start = 0;
+	SHM->led_emit_status = 0;
+	SHM->beep_emit_start = 0;
+	SHM->beep_emit_status = 0;
 
 	pthread_mutexattr_init(&alarm_mutex_start_attr);
 	pthread_mutexattr_setpshared(&alarm_mutex_start_attr, PTHREAD_PROCESS_SHARED);
@@ -110,15 +113,15 @@ int main(int argc, char *argv[])
 	pthread_cond_init(&SHM->gprs_cond_end, &gprs_cond_end_attr);
 	pthread_condattr_destroy(&gprs_cond_end_attr);
 
-	pthread_mutexattr_init(&led_mutex_status_attr);
-	pthread_mutexattr_setpshared(&led_mutex_status_attr, PTHREAD_PROCESS_SHARED);
-	pthread_mutex_init(&SHM->led_mutex_status, &led_mutex_status_attr);
-	pthread_mutexattr_destroy(&led_mutex_status_attr);
+	pthread_mutexattr_init(&beep_mutex_start_attr);
+	pthread_mutexattr_setpshared(&beep_mutex_start_attr, PTHREAD_PROCESS_SHARED);
+	pthread_mutex_init(&SHM->beep_mutex_start, &beep_mutex_start_attr);
+	pthread_mutexattr_destroy(&beep_mutex_start_attr);
 
-	pthread_condattr_init(&led_cond_status_attr);
-	pthread_condattr_setpshared(&led_cond_status_attr, PTHREAD_PROCESS_SHARED);
-	pthread_cond_init(&SHM->led_cond_status, &led_cond_status_attr);
-	pthread_condattr_destroy(&led_cond_status_attr);
+	pthread_condattr_init(&beep_cond_start_attr);
+	pthread_condattr_setpshared(&beep_cond_start_attr, PTHREAD_PROCESS_SHARED);
+	pthread_cond_init(&SHM->beep_cond_start, &beep_cond_start_attr);
+	pthread_condattr_destroy(&beep_cond_start_attr);
 
 	pthread_mutexattr_init(&led_mutex_start_attr);
 	pthread_mutexattr_setpshared(&led_mutex_start_attr, PTHREAD_PROCESS_SHARED);
@@ -129,6 +132,17 @@ int main(int argc, char *argv[])
 	pthread_condattr_setpshared(&led_cond_start_attr, PTHREAD_PROCESS_SHARED);
 	pthread_cond_init(&SHM->led_cond_start, &led_cond_start_attr);
 	pthread_condattr_destroy(&led_cond_start_attr);
+
+	pthread_mutexattr_init(&beep_mutex_status_attr);
+	pthread_mutexattr_setpshared(&beep_mutex_status_attr, PTHREAD_PROCESS_SHARED);
+	pthread_mutex_init(&SHM->beep_mutex_status, &beep_mutex_status_attr);
+	pthread_mutexattr_destroy(&beep_mutex_status_attr);
+
+	if (0 > (fd_adc = open("/dev/ADC", O_RDWR)))
+	{
+		perror("Failed to open ADC");
+		exit(-1);
+	}
 
 	if (0 > (fd_beep = open("/dev/BEEP", O_RDWR)))
 	{
@@ -192,7 +206,7 @@ int main(int argc, char *argv[])
 
 		if (0 != pthread_create(&led_thread, NULL, led_thread_handler, (void *)&fd_led))
 		{
-			perror("Failed to create beep thread");
+			perror("Failed to create led thread");
 			exit(-1);
 		}
 
@@ -255,7 +269,7 @@ int main(int argc, char *argv[])
 			SHM->gprs_emit_end++;
 			pthread_mutex_unlock(&SHM->gprs_mutex_end);
 
-			if (gprs_flag_end)
+			if (1 == gprs_flag_end)
 			{
 				pthread_cond_signal(&SHM->gprs_cond_end);
 			}
@@ -268,13 +282,29 @@ int main(int argc, char *argv[])
 		int keyno = 0;
 		int gprs_flag_start = 0;
 		int led_flag_start = 0;
+		int beep_flag_start = 0;
 
 		signal(SIGCHLD, SIG_IGN);
+
+		pthread_t adc_thread;
+		pthread_t cgi_thread;
+
+		if (0 != pthread_create(&adc_thread, NULL, adc_thread_handler, (void *)&fd_adc))
+		{
+			perror("Failed to create adc thread");
+			exit(-1);
+		}
+
+		if (0 != pthread_create(&cgi_thread, NULL, cgi_thread_handler, NULL))
+		{
+			perror("Failed to create cgi thread");
+			exit(-1);
+		}
 
 		while (1)
 		{
 			read(fd_keyboard, &keyno, sizeof(keyno));
-			printf("keyno=%d\n", keyno);
+			//printf("keyno=%d\n", keyno);
 
 			if (0 != keyno)
 			{
@@ -311,8 +341,30 @@ int main(int argc, char *argv[])
 
 				if (1 == led_flag_start)
 				{
-					printf("led_flag_start=%d\n", led_flag_start);
 					pthread_cond_signal(&SHM->led_cond_start);
+				}
+
+				pthread_mutex_lock(&SHM->beep_mutex_status);
+
+				if (1 != keyno)
+				{
+					SHM->beep_emit_status = 1;
+				}
+				else
+				{
+					SHM->beep_emit_status = 0;
+				}
+
+				pthread_mutex_unlock(&SHM->beep_mutex_status);
+
+				pthread_mutex_lock(&SHM->beep_mutex_start);
+				beep_flag_start = (0 == SHM->beep_emit_start);
+				SHM->beep_emit_start++;
+				pthread_mutex_unlock(&SHM->beep_mutex_start);
+
+				if (1 == beep_flag_start)
+				{
+					pthread_cond_signal(&SHM->beep_cond_start);
 				}
 
 				keyno = 0;

@@ -1,7 +1,9 @@
 #include <unistd.h>
+#include <pthread.h>
 #include <sys/ioctl.h>
 
 #include "beep.h"
+#include "main.h"
 
 Note MumIsTheBestInTheWorld[]={
 	//6.	  		  //_5		 //3		 //5	
@@ -24,100 +26,41 @@ Note MumIsTheBestInTheWorld[]={
 	{DO,TIME/2},{SOL/2,TIME*3}
 };
 
-Note GreatlyLongNow[]={  	
-	// 2		3			3		3.				_2				1
-	{RE,TIME}, {MI,TIME},{MI,TIME},{MI,TIME+TIME/2},{RE,TIME/2},{DO,TIME},
-	//6,		1			2		1--				2			3			3
-	{LA/2,TIME},{DO,TIME},{RE,TIME},{DO,TIME*3},{RE,TIME},{MI,TIME},{MI,TIME},
-	//3.				_5			3			3			2			3
-	{MI,TIME+TIME/2},{SOL,TIME/2},{MI,TIME},{MI,TIME},{RE,TIME},{MI,TIME},
-	//3--		5			6			6		  6.				_5
-	{MI,TIME*3},{SOL,TIME},{LA,TIME},{LA,TIME},{LA,TIME+TIME/2},{SOL,TIME/2},
-	// 3		3		5				6		5---			2			3
-	{MI,TIME},{MI,TIME},{SOL,TIME},{LA,TIME},{SOL,TIME*3},{RE,TIME},{MI,TIME},
-	// 3		2.				_3				3		  2			3
-	{MI,TIME},{RE,TIME+TIME/2},{MI,TIME/2},{MI,TIME},{RE,TIME},{MI,TIME},
-	//6,		1_			  _6,			  6,-
-	{LA/2,TIME},{DO,TIME/2},{LA/2,TIME/2},{LA/2,TIME*2},
-	//2_		_2			2_				_1			6,
-	{RE,TIME/2},{RE,TIME/2},{RE,TIME/2},{DO,TIME/2},{LA/2,TIME},
-	//2_		_2			2_				_1	  		6,
-	{RE,TIME/2},{RE,TIME/2},{RE,TIME/2},{DO,TIME/2},{LA/2,TIME},
-	// 2		3		1			2.					_3			5
-	{RE,TIME},{MI,TIME},{DO,TIME},{RE,TIME+TIME/2},{MI,TIME/2},{SOL,TIME},
-	//6_		_6				6_			_5			3
-	{LA,TIME/2},{LA,TIME/2},{LA,TIME/2},{SOL,TIME/2},{MI,TIME},
-	//2_		_2			2_				_1			6,
-	{RE,TIME/2},{RE,TIME/2},{RE,TIME/2},{DO,TIME/2},{LA/2,TIME},
-	//6,		5,.					  _6,			 6,--
-	{LA/2,TIME},{SOL/2,TIME+TIME/2},{LA/2,TIME/2},{LA/2,TIME*3},
-	//2_		_2			2_				_1			6,
-	{RE,TIME/2},{RE,TIME/2},{RE,TIME/2},{DO,TIME/2},{LA/2,TIME},
-	//2_		_2			2_				_1	  		6,
-	{RE,TIME/2},{RE,TIME/2},{RE,TIME/2},{DO,TIME/2},{LA/2,TIME},
-	// 2		3		1			2.					_3			5
-	{RE,TIME},{MI,TIME},{DO,TIME},{RE,TIME+TIME/2},{MI,TIME/2},{SOL,TIME},
-	//6_		_6				6_			_5			3
-	{LA,TIME/2},{LA,TIME/2},{LA,TIME/2},{SOL,TIME/2},{MI,TIME},
-	//2_		_2			2_				_1			6,
-	{RE,TIME/2},{RE,TIME/2},{RE,TIME/2},{DO,TIME/2},{LA/2,TIME},
-	//6,		5,.					  _6,			 6,--
-	{LA/2,TIME},{SOL/2,TIME+TIME/2},{LA/2,TIME/2},{LA/2,TIME*3}
-};
-
-Note FishBoat[]={ //3.				_5			6._					=1^			 6_
-	{MI,TIME+TIME/2},{SOL,TIME/2},{LA,TIME/2+TIME/4},{DO*2,TIME/4},{LA,TIME/2},
-	//_5			3 -.		2		  1.			 _3			 2._
-	{SOL,TIME/2},{MI,TIME*3},{RE,TIME},{DO,TIME+TIME/2},{MI,TIME/2},{RE,TIME/2+TIME/4},
-	//=3			2_			_1		 2--			3.				_5
-	{MI,TIME/4},{RE,TIME/2},{DO,TIME/2},{RE,TIME*4},{MI,TIME+TIME/2},{SOL,TIME/2},
-	// 2		1		6._					=1^			 	6_			_5
-	{RE,TIME},{DO,TIME},{LA,TIME/2+TIME/4},{DO*2,TIME/4},{LA,TIME/2},{SOL,TIME/2},
-	//6-		 5,.					_6,			1._					=3
-	{LA,TIME*2},{SOL/2,TIME+TIME/2},{LA/2,TIME/2},{DO,TIME/2+TIME/4},{MI,TIME/4},
-	//2_			_1		 5,--
-	{RE,TIME/2},{DO,TIME/2},{SOL/2,TIME*4},
-	//3.				_5			6._					=1^			6_
-	{MI,TIME+TIME/2},{SOL,TIME/2},{LA,TIME/2+TIME/4},{DO*2,TIME/4},{LA,TIME/2},
-	//_5			3-.			5_			_6			1^_				   _6
-	{SOL,TIME/2},{MI,TIME*3},{SOL,TIME/2},{LA,TIME/2},{DO*2,TIME+TIME/2},{LA,TIME/2},
-	//5._					=6			5_		  _3			2--
-	{SOL,TIME/2+TIME/4},{LA,TIME/4},{SOL,TIME/2},{MI,TIME/2},{RE,TIME*4},
-	//3.				_5			2._					=3			2_			_1
-	{MI,TIME+TIME/2},{SOL,TIME/2},{RE,TIME/2+TIME/4},{MI,TIME/4},{RE,TIME/2},{DO,TIME/2},
-	//6._				=1^				6_			_5			6-			1.
-	{LA,TIME/2+TIME/4},{DO*2,TIME/4},{LA,TIME/2},{SOL,TIME/2},{LA,TIME*2},{DO,TIME+TIME/2},
-	//_2	  	 3_			_5			    2_			_3			1--
-	{RE,TIME/2},{MI,TIME/2},{SOL,TIME/2},{RE,TIME/2},{MI,TIME/2},{DO,TIME*4}
-};
-
 void *beep_thread_handler(void *arg)
 {
 	int i, div;
 
 	while (1)
 	{
-		ioctl(*((int *)arg), BEEP_PRE, 255);
+		pthread_mutex_lock(&SHM->beep_mutex_start);
+
+		while (0 == SHM->beep_emit_start)
+		{
+			pthread_cond_wait(&SHM->beep_cond_start, &SHM->beep_mutex_start);
+		}
+
+		SHM->beep_emit_start--;
+		pthread_mutex_unlock(&SHM->beep_mutex_start);
 
 		for(i = 0; i < sizeof(MumIsTheBestInTheWorld)/sizeof(Note); i++)
 		{
+			pthread_mutex_lock(&SHM->beep_mutex_status);
+
+			if (0 == SHM->beep_emit_status)
+			{
+				ioctl(*((int *)arg), BEEP_OFF);
+				break;
+			}
+
+			pthread_mutex_unlock(&SHM->beep_mutex_status);
+
+			ioctl(*((int *)arg), BEEP_PRE, 255);
+
 			div = (PCLK/256/4) / (MumIsTheBestInTheWorld[i].pitch);
 			ioctl(*((int *)arg), BEEP_CNT, div);
 			usleep(MumIsTheBestInTheWorld[i].dimation * 100); 
 		}
 
-		for(i = 0; i < sizeof(GreatlyLongNow)/sizeof(Note); i++)
-		{
-			div = (PCLK/256/4) / (GreatlyLongNow[i].pitch);
-			ioctl(*((int *)arg), BEEP_CNT, div);
-			usleep(GreatlyLongNow[i].dimation * 100); 
-		}
-
-		for(i = 0; i < sizeof(FishBoat)/sizeof(Note); i++)
-		{
-			div = (PCLK/256/4) / (FishBoat[i].pitch);
-			ioctl(*((int *)arg), BEEP_CNT, div);
-			usleep(FishBoat[i].dimation * 100); 
-		}
+		usleep(100000);
 	}
 }
