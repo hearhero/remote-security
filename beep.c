@@ -29,6 +29,7 @@ Note MumIsTheBestInTheWorld[]={
 void *beep_thread_handler(void *arg)
 {
 	int i, div;
+	int beep_flag = 0;
 
 	while (1)
 	{
@@ -39,7 +40,11 @@ void *beep_thread_handler(void *arg)
 			pthread_cond_wait(&SHM->beep_cond_start, &SHM->beep_mutex_start);
 		}
 
-		SHM->beep_emit_start--;
+		if (0 < SHM->beep_emit_start)
+		{
+			SHM->beep_emit_start--;
+		}
+
 		pthread_mutex_unlock(&SHM->beep_mutex_start);
 
 		for(i = 0; i < sizeof(MumIsTheBestInTheWorld)/sizeof(Note); i++)
@@ -59,6 +64,16 @@ void *beep_thread_handler(void *arg)
 			div = (PCLK/256/4) / (MumIsTheBestInTheWorld[i].pitch);
 			ioctl(*((int *)arg), BEEP_CNT, div);
 			usleep(MumIsTheBestInTheWorld[i].dimation * 100); 
+		}
+
+		pthread_mutex_lock(&SHM->beep_mutex_end);
+		beep_flag = (0 == SHM->beep_emit_end);
+		SHM->beep_emit_end++;
+		pthread_mutex_unlock(&SHM->beep_mutex_end);
+
+		if (1 == beep_flag)
+		{
+			pthread_cond_broadcast(&SHM->beep_cond_end);
 		}
 
 		usleep(100000);

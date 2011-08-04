@@ -32,9 +32,19 @@ void *led_thread_handler(void *arg)
 		{
 			ioctl(*((int *)arg), LED_OFF, 0);
 		}
-		else if (1 == led_flag)
+		else if (0 < led_flag)
 		{
 			ioctl(*((int *)arg), LED_ON, 0);
+		}
+
+		pthread_mutex_lock(&SHM->led_mutex_end);
+		led_flag = (0 == SHM->led_emit_end);
+		SHM->led_emit_end++;
+		pthread_mutex_unlock(&SHM->led_mutex_end);
+
+		if (1 == led_flag)
+		{
+			pthread_cond_broadcast(&SHM->led_cond_end);
 		}
 
 		usleep(100000);
