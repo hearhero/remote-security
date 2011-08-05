@@ -7,14 +7,13 @@
 void *adc_thread_handler(void *arg)
 {
 	int adc_value;
-	int gprs_flag = 0;
-	int led_flag = 0;
-	int beep_flag = 0;
+	int gprs_flag;
+	int led_flag;
+	int beep_flag;
 
 	while (1)
 	{
 		read(*((int *)arg), &adc_value, sizeof(adc_value));
-		//printf("adc_value=%d\n", adc_value);
 
 		if (420 < adc_value)
 		{

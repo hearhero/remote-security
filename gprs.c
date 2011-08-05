@@ -136,8 +136,8 @@ bool message_send(int fd, char *cmd, int cmdlen, char *msg, int msglen)
 	printf("%s\n", msg);
 #endif
 	usleep(1000000);
-	memset(reply, 0, sizeof(reply));
-	read(fd, reply, 256);
+	//memset(reply, 0, sizeof(reply));
+	//read(fd, reply, 256);
 #ifdef _DEBUG_GPRS_
 	printf("%s\n", reply);
 #endif

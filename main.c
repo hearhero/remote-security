@@ -77,6 +77,9 @@ int main(int argc, char *argv[])
 	pthread_mutexattr_t led_mutex_end_attr;
 	pthread_condattr_t led_cond_end_attr;
 
+	pthread_mutexattr_t cgi_mutex_start_attr;
+	pthread_condattr_t cgi_cond_start_attr;
+
 	init_daemon();
 
 	key_t key = 0x34567890;
@@ -176,6 +179,16 @@ int main(int argc, char *argv[])
 	pthread_condattr_setpshared(&led_cond_end_attr, PTHREAD_PROCESS_SHARED);
 	pthread_cond_init(&SHM->led_cond_end, &led_cond_end_attr);
 	pthread_condattr_destroy(&led_cond_end_attr);
+
+	pthread_mutexattr_init(&cgi_mutex_start_attr);
+	pthread_mutexattr_setpshared(&cgi_mutex_start_attr, PTHREAD_PROCESS_SHARED);
+	pthread_mutex_init(&SHM->cgi_mutex_start, &cgi_mutex_start_attr);
+	pthread_mutexattr_destroy(&cgi_mutex_start_attr);
+
+	pthread_condattr_init(&cgi_cond_start_attr);
+	pthread_condattr_setpshared(&cgi_cond_start_attr, PTHREAD_PROCESS_SHARED);
+	pthread_cond_init(&SHM->cgi_cond_start, &cgi_cond_start_attr);
+	pthread_condattr_destroy(&cgi_cond_start_attr);
 
 	if (0 > (fd_adc = open("/dev/ADC", O_RDWR)))
 	{
@@ -316,23 +329,6 @@ int main(int argc, char *argv[])
 			usleep(100000);
 		}
 	}
-	else if (-1 == (pid = fork()))
-	{
-		perror("Failed to fork script process");
-		exit(-1);
-	}
-	else if (0 == pid) //autoload modules
-	{
-		if (-1 == execl("./install.sh", "./install.sh", NULL))
-		{
-			perror("Failed to load modules");
-			exit(-1);
-		}
-		else
-		{
-			exit(0);
-		}
-	}
 	else //listen process
 	{
 		int keyno = 0;
@@ -360,7 +356,6 @@ int main(int argc, char *argv[])
 		while (1)
 		{
 			read(fd_keyboard, &keyno, sizeof(keyno));
-			//printf("keyno=%d\n", keyno);
 
 			if (0 != keyno)
 			{
@@ -390,7 +385,7 @@ int main(int argc, char *argv[])
 
 				pthread_mutex_lock(&SHM->led_mutex_start);
 				led_flag_start = (0 == SHM->led_emit_start);
-				
+
 				if (0 == SHM->led_emit_status)
 				{
 					SHM->led_emit_status++;

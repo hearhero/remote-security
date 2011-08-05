@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "cgi.h"
 #include "main.h"
@@ -8,8 +9,8 @@
 void *cgi_thread_handler(void *arg)
 {
 	char buf[MAXCMDLEN];
-	int led_flag = 0;
-	int beep_flag = 0;
+	int led_flag;
+	int beep_flag;
 
 	while (1)
 	{
@@ -20,7 +21,11 @@ void *cgi_thread_handler(void *arg)
 			pthread_cond_wait(&SHM->cgi_cond_start, &SHM->cgi_mutex_start);
 		}
 
-		SHM->cgi_emit_start--;
+		if (0 < SHM->cgi_emit_start)
+		{
+			SHM->cgi_emit_start--;
+		}
+
 		memset(buf, 0, MAXCMDLEN);
 		strcpy(buf, SHM->cgi_cmd);
 		pthread_mutex_unlock(&SHM->cgi_mutex_start);
@@ -139,7 +144,12 @@ void *cgi_thread_handler(void *arg)
 		if (0 == strcmp(buf, "BEEP_OFF"))
 		{
 			pthread_mutex_lock(&SHM->beep_mutex_status);
-			SHM->beep_emit_status = 0;
+
+			if (0 < SHM->beep_emit_status)
+			{
+				SHM->beep_emit_status--;
+			}
+
 			pthread_mutex_unlock(&SHM->beep_mutex_status);
 
 			pthread_mutex_lock(&SHM->beep_mutex_start);

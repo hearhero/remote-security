@@ -52,19 +52,16 @@ struct shm
 	char cgi_cmd[MAXCMDLEN];
 }*SHM;
 
-pid_t pid;
 key_t key;
 int shmid;
-int cgi_flag = 0;
 
 int main()
 {
-	int i,n;
+	int i, n;
+	int cgi_flag = 0;
 	char data[100];
 
 	printf("Content-Type:text/html;charset=utf-8\n\n");
-	printf("<html>");
-	printf("<body>");
 
 	key = 0x34567890;
 
@@ -86,6 +83,14 @@ int main()
 		SHM = shmat(shmid, NULL, 0);
 	}
 
+	SHM->cgi_emit_start = 0;
+
+	if (getenv("CONTENT_LENGTH"))
+	{
+		n = atoi(getenv("CONTENT_LENGTH"));
+		printf("%d\n", n);
+	}
+
 	for (i = 0; i < n; i++)
 	{
 		data[i] = getc(stdin);
@@ -102,41 +107,35 @@ int main()
 
 	if (!strcmp(data, "LED_ON"))
 	{
-		printf("write to shm : ");
-
-		pthread_mutex_lock(&SHM->cgi_mutex_start);
 		cgi_flag = (0 == SHM->cgi_emit_start);
-	
+
 		if (0 == SHM->cgi_emit_start)
 		{
 			SHM->cgi_emit_start++;
 		}
-
+		
+		memset(SHM->cgi_cmd, 0, MAXCMDLEN);
 		strcpy(SHM->cgi_cmd, data);
-		pthread_mutex_unlock(&SHM->cgi_mutex_start);
 
 		if (1 == cgi_flag)
 		{
 			pthread_cond_signal(&SHM->cgi_cond_start);
 		}
 
-		printf ("<meta http-equiv=\"refresh\" content=\"10;URL=../ioctl.html\"/>");
+		printf ("<meta http-equiv=\"refresh\" content=\"0;URL=../ioctl.html\"/>");
 	}
 
 	if (!strcmp(data, "LED_OFF"))
 	{
-		printf("write to shm : ");
-
-		pthread_mutex_lock(&SHM->cgi_mutex_start);
 		cgi_flag = (0 == SHM->cgi_emit_start);
-	
+
 		if (0 == SHM->cgi_emit_start)
 		{
 			SHM->cgi_emit_start++;
 		}
 
+		memset(SHM->cgi_cmd, 0, MAXCMDLEN);
 		strcpy(SHM->cgi_cmd, data);
-		pthread_mutex_unlock(&SHM->cgi_mutex_start);
 
 		if (1 == cgi_flag)
 		{
@@ -146,20 +145,17 @@ int main()
 		printf ("<meta http-equiv=\"refresh\" content=\"0;URL=../ioctl.html\"/>");
 	}
 
-	if (!strcmp(data, "PWM_ON"))
+	if (!strcmp(data, "BEEP_ON"))
 	{
-		printf("write to shm : ");
-
-		pthread_mutex_lock(&SHM->cgi_mutex_start);
 		cgi_flag = (0 == SHM->cgi_emit_start);
-	
+
 		if (0 == SHM->cgi_emit_start)
 		{
 			SHM->cgi_emit_start++;
 		}
 
+		memset(SHM->cgi_cmd, 0, MAXCMDLEN);
 		strcpy(SHM->cgi_cmd, data);
-		pthread_mutex_unlock(&SHM->cgi_mutex_start);
 
 		if (1 == cgi_flag)
 		{
@@ -169,20 +165,17 @@ int main()
 		printf ("<meta http-equiv=\"refresh\" content=\"0;URL=../ioctl.html\"/>");
 	}
 
-	if (!strcmp(data, "PWM_OFF"))
+	if (!strcmp(data, "BEEP_OFF"))
 	{
-		printf("write to shm : ");
-
-		pthread_mutex_lock(&SHM->cgi_mutex_start);
 		cgi_flag = (0 == SHM->cgi_emit_start);
-	
+
 		if (0 == SHM->cgi_emit_start)
 		{
 			SHM->cgi_emit_start++;
 		}
 
+		memset(SHM->cgi_cmd, 0, MAXCMDLEN);
 		strcpy(SHM->cgi_cmd, data);
-		pthread_mutex_unlock(&SHM->cgi_mutex_start);
 
 		if (1 == cgi_flag)
 		{
@@ -194,16 +187,15 @@ int main()
 
 	if (!strcmp(data, "CAM_ON"))
 	{
-		printf("write to shm : ");
-
 		pthread_mutex_lock(&SHM->cgi_mutex_start);
 		cgi_flag = (0 == SHM->cgi_emit_start);
-	
+
 		if (0 == SHM->cgi_emit_start)
 		{
 			SHM->cgi_emit_start++;
 		}
 
+		memset(SHM->cgi_cmd, 0, MAXCMDLEN);
 		strcpy(SHM->cgi_cmd, data);
 		pthread_mutex_unlock(&SHM->cgi_mutex_start);
 
@@ -217,16 +209,15 @@ int main()
 
 	if (!strcmp(data, "CAM_OFF"))
 	{
-		printf("write to shm : ");
-
 		pthread_mutex_lock(&SHM->cgi_mutex_start);
 		cgi_flag = (0 == SHM->cgi_emit_start);
-	
+
 		if (0 == SHM->cgi_emit_start)
 		{
 			SHM->cgi_emit_start++;
 		}
 
+		memset(SHM->cgi_cmd, 0, MAXCMDLEN);
 		strcpy(SHM->cgi_cmd, data);
 		pthread_mutex_unlock(&SHM->cgi_mutex_start);
 
@@ -240,16 +231,15 @@ int main()
 
 	if (!strcmp(data, "ADC_ON"))
 	{
-		printf("write to shm : ");
-
 		pthread_mutex_lock(&SHM->cgi_mutex_start);
 		cgi_flag = (0 == SHM->cgi_emit_start);
-	
+
 		if (0 == SHM->cgi_emit_start)
 		{
 			SHM->cgi_emit_start++;
 		}
 
+		memset(SHM->cgi_cmd, 0, MAXCMDLEN);
 		strcpy(SHM->cgi_cmd, data);
 		pthread_mutex_unlock(&SHM->cgi_mutex_start);
 
@@ -263,16 +253,15 @@ int main()
 
 	if (!strcmp(data, "ADC_OFF"))
 	{
-		printf("write to shm : ");
-
 		pthread_mutex_lock(&SHM->cgi_mutex_start);
 		cgi_flag = (0 == SHM->cgi_emit_start);
-	
+
 		if (0 == SHM->cgi_emit_start)
 		{
 			SHM->cgi_emit_start++;
 		}
 
+		memset(SHM->cgi_cmd, 0, MAXCMDLEN);
 		strcpy(SHM->cgi_cmd, data);
 		pthread_mutex_unlock(&SHM->cgi_mutex_start);
 
@@ -286,16 +275,15 @@ int main()
 
 	if (!strcmp(data, "LOOK"))
 	{
-		printf("write to shm : ");
-
 		pthread_mutex_lock(&SHM->cgi_mutex_start);
 		cgi_flag = (0 == SHM->cgi_emit_start);
-	
+
 		if (0 == SHM->cgi_emit_start)
 		{
 			SHM->cgi_emit_start++;
 		}
 
+		memset(SHM->cgi_cmd, 0, MAXCMDLEN);
 		strcpy(SHM->cgi_cmd, data);
 		pthread_mutex_unlock(&SHM->cgi_mutex_start);
 
@@ -309,18 +297,15 @@ int main()
 
 	if (!strcmp(data, "SAVE"))
 	{
-		printf("write to shm : ");
-
-		pthread_mutex_lock(&SHM->cgi_mutex_start);
 		cgi_flag = (0 == SHM->cgi_emit_start);
-	
+
 		if (0 == SHM->cgi_emit_start)
 		{
 			SHM->cgi_emit_start++;
 		}
 
+		memset(SHM->cgi_cmd, 0, MAXCMDLEN);
 		strcpy(SHM->cgi_cmd, data);
-		pthread_mutex_unlock(&SHM->cgi_mutex_start);
 
 		if (1 == cgi_flag)
 		{
@@ -329,9 +314,6 @@ int main()
 
 		printf ("<meta http-equiv=\"refresh\" content=\"0;URL=../ioctl.html\"/>");
 	}
-
-	printf("</body>");
-	printf("</html>");
 
 	return 0;
 }

@@ -7,7 +7,7 @@
 
 void *led_thread_handler(void *arg)
 {
-	int led_flag = 0;
+	int led_flag;
 
 	while (1)
 	{
