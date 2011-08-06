@@ -1,7 +1,6 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <string.h>
-#include <stdio.h>
 
 #include "cgi.h"
 #include "main.h"
@@ -26,20 +25,24 @@ void *cgi_thread_handler(void *arg)
 			SHM->cgi_emit_start--;
 		}
 
-		memset(buf, 0, MAXCMDLEN);
+		memset(buf, 0, sizeof(buf));
 		strcpy(buf, SHM->cgi_cmd);
 		pthread_mutex_unlock(&SHM->cgi_mutex_start);
 
 		if (0 == strcmp(buf, "LED_ON"))
 		{
-			pthread_mutex_lock(&SHM->led_mutex_start);
-			led_flag = (0 == SHM->led_emit_start);
+			pthread_mutex_lock(&SHM->led_mutex_status);
 
 			if (0 == SHM->led_emit_status)
 			{
 				SHM->led_emit_status++;
 			}
 
+			pthread_mutex_unlock(&SHM->led_mutex_status);
+
+			pthread_mutex_lock(&SHM->led_mutex_start);
+			led_flag = (0 == SHM->led_emit_start);
+
 			if (0 == SHM->led_emit_start)
 			{
 				SHM->led_emit_start++;
@@ -51,7 +54,7 @@ void *cgi_thread_handler(void *arg)
 			{
 				pthread_cond_signal(&SHM->led_cond_start);
 			}
-
+#if 0
 			pthread_mutex_lock(&SHM->led_mutex_end);
 
 			while (0 == SHM->led_emit_end)
@@ -65,13 +68,22 @@ void *cgi_thread_handler(void *arg)
 			}
 
 			pthread_mutex_unlock(&SHM->led_mutex_end);
+#endif
 		}
 
 		if (0 == strcmp(buf, "LED_OFF"))
 		{
+			pthread_mutex_lock(&SHM->led_mutex_status);
+
+			if (0 < SHM->led_emit_status)
+			{
+				SHM->led_emit_status--;
+			}
+
+			pthread_mutex_unlock(&SHM->led_mutex_status);
+
 			pthread_mutex_lock(&SHM->led_mutex_start);
 			led_flag = (0 == SHM->led_emit_start);
-			SHM->led_emit_status = 0;
 
 			if (0 == SHM->led_emit_start)
 			{
@@ -84,7 +96,7 @@ void *cgi_thread_handler(void *arg)
 			{
 				pthread_cond_signal(&SHM->led_cond_start);
 			}
-
+#if 0
 			pthread_mutex_lock(&SHM->led_mutex_end);
 
 			while (0 == SHM->led_emit_end)
@@ -98,6 +110,7 @@ void *cgi_thread_handler(void *arg)
 			}
 
 			pthread_mutex_unlock(&SHM->led_mutex_end);
+#endif
 		}
 
 		if (0 == strcmp(buf, "BEEP_ON"))
@@ -125,7 +138,7 @@ void *cgi_thread_handler(void *arg)
 			{
 				pthread_cond_signal(&SHM->beep_cond_start);
 			}
-
+#if 0
 			pthread_mutex_lock(&SHM->beep_mutex_end);
 
 			while (0 == SHM->beep_emit_end)
@@ -139,6 +152,7 @@ void *cgi_thread_handler(void *arg)
 			}
 
 			pthread_mutex_unlock(&SHM->beep_mutex_end);
+#endif
 		}
 
 		if (0 == strcmp(buf, "BEEP_OFF"))
@@ -151,7 +165,7 @@ void *cgi_thread_handler(void *arg)
 			}
 
 			pthread_mutex_unlock(&SHM->beep_mutex_status);
-
+#if 0
 			pthread_mutex_lock(&SHM->beep_mutex_start);
 			beep_flag = (0 == SHM->beep_emit_start);
 
@@ -180,6 +194,7 @@ void *cgi_thread_handler(void *arg)
 			}
 
 			pthread_mutex_unlock(&SHM->beep_mutex_end);
+#endif
 		}
 	}
 }

@@ -15,6 +15,10 @@ void *adc_thread_handler(void *arg)
 	{
 		read(*((int *)arg), &adc_value, sizeof(adc_value));
 
+		pthread_mutex_lock(&SHM->status_mutex_temperature);
+		SHM->status_temperature = adc_value / 10;
+		pthread_mutex_unlock(&SHM->status_mutex_temperature);
+
 		if (420 < adc_value)
 		{
 			pthread_mutex_lock(&SHM->gprs_mutex_start);
@@ -41,13 +45,17 @@ void *adc_thread_handler(void *arg)
 
 			pthread_mutex_unlock(&SHM->gprs_mutex_end);
 
-			pthread_mutex_lock(&SHM->led_mutex_start);
-			led_flag = (0 == SHM->led_emit_start);
+			pthread_mutex_lock(&SHM->led_mutex_status);
 
 			if (0 == SHM->led_emit_status)
 			{
 				SHM->led_emit_status++;
 			}
+
+			pthread_mutex_unlock(&SHM->led_mutex_status);
+
+			pthread_mutex_lock(&SHM->led_mutex_start);
+			led_flag = (0 == SHM->led_emit_start);
 
 			if (0 == SHM->led_emit_start)
 			{

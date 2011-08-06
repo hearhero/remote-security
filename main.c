@@ -16,6 +16,7 @@
 #include "led.h"
 #include "adc.h"
 #include "cgi.h"
+#include "status.h"
 #include "main.h"
 
 #define COMMAND_NUM 4
@@ -53,7 +54,7 @@ int main(int argc, char *argv[])
 {
 	int shmid;
 	pid_t pid;
-	int fd_serial, fd_phone, fd_ada;
+	int fd_serial, fd_phone, fd_ada, fd_status;
 	int fd_keyboard, fd_led, fd_beep, fd_adc;
 	struct termios uart;
 
@@ -77,8 +78,12 @@ int main(int argc, char *argv[])
 	pthread_mutexattr_t led_mutex_end_attr;
 	pthread_condattr_t led_cond_end_attr;
 
+	pthread_mutexattr_t led_mutex_status_attr;
+
 	pthread_mutexattr_t cgi_mutex_start_attr;
 	pthread_condattr_t cgi_cond_start_attr;
+
+	pthread_mutexattr_t status_mutex_temperature_attr;
 
 	init_daemon();
 
@@ -114,6 +119,7 @@ int main(int argc, char *argv[])
 	SHM->beep_emit_status = 0;
 
 	SHM->cgi_emit_start = 0;
+	SHM->status_temperature = 0;
 
 	pthread_mutexattr_init(&gprs_mutex_start_attr);
 	pthread_mutexattr_setpshared(&gprs_mutex_start_attr, PTHREAD_PROCESS_SHARED);
@@ -189,6 +195,22 @@ int main(int argc, char *argv[])
 	pthread_condattr_setpshared(&cgi_cond_start_attr, PTHREAD_PROCESS_SHARED);
 	pthread_cond_init(&SHM->cgi_cond_start, &cgi_cond_start_attr);
 	pthread_condattr_destroy(&cgi_cond_start_attr);
+
+	pthread_mutexattr_init(&status_mutex_temperature_attr);
+	pthread_mutexattr_setpshared(&status_mutex_temperature_attr, PTHREAD_PROCESS_SHARED);
+	pthread_mutex_init(&SHM->status_mutex_temperature, &status_mutex_temperature_attr);
+	pthread_mutexattr_destroy(&status_mutex_temperature_attr);
+	
+	pthread_mutexattr_init(&led_mutex_status_attr);
+	pthread_mutexattr_setpshared(&led_mutex_status_attr, PTHREAD_PROCESS_SHARED);
+	pthread_mutex_init(&SHM->led_mutex_status, &led_mutex_status_attr);
+	pthread_mutexattr_destroy(&led_mutex_status_attr);
+
+	if (0 > (fd_status = open("/www/measure02.xml", O_RDWR)))
+	{
+		perror("Failed to open status file");
+		exit(-1);
+	}
 
 	if (0 > (fd_adc = open("/dev/ADC", O_RDWR)))
 	{
@@ -340,6 +362,7 @@ int main(int argc, char *argv[])
 
 		pthread_t adc_thread;
 		pthread_t cgi_thread;
+		pthread_t status_thread;
 
 		if (0 != pthread_create(&adc_thread, NULL, adc_thread_handler, (void *)&fd_adc))
 		{
@@ -350,6 +373,12 @@ int main(int argc, char *argv[])
 		if (0 != pthread_create(&cgi_thread, NULL, cgi_thread_handler, NULL))
 		{
 			perror("Failed to create cgi thread");
+			exit(-1);
+		}
+
+		if (0 != pthread_create(&status_thread, NULL, status_thread_handler, (void *)&fd_status))
+		{
+			perror("Failed to create status thread");
 			exit(-1);
 		}
 
@@ -383,13 +412,17 @@ int main(int argc, char *argv[])
 
 				pthread_mutex_unlock(&SHM->gprs_mutex_end);
 
-				pthread_mutex_lock(&SHM->led_mutex_start);
-				led_flag_start = (0 == SHM->led_emit_start);
+				pthread_mutex_lock(&SHM->led_mutex_status);
 
 				if (0 == SHM->led_emit_status)
 				{
 					SHM->led_emit_status++;
 				}
+
+				pthread_mutex_unlock(&SHM->led_mutex_status);
+
+				pthread_mutex_lock(&SHM->led_mutex_start);
+				led_flag_start = (0 == SHM->led_emit_start);
 
 				if (0 == SHM->led_emit_start)
 				{

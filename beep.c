@@ -48,7 +48,6 @@ void *beep_thread_handler(void *arg)
 
 		pthread_mutex_unlock(&SHM->beep_mutex_start);
 
-
 		for(i = 0; i < sizeof(MumIsTheBestInTheWorld)/sizeof(Note); i++)
 		{
 			pthread_mutex_lock(&SHM->beep_mutex_status);
@@ -68,8 +67,16 @@ void *beep_thread_handler(void *arg)
 		}
 
 		ioctl(*((int *)arg), BEEP_OFF);
-		printf("beep_status=%d\n", beep_status);
 
+		pthread_mutex_lock(&SHM->beep_mutex_status);
+
+		if (0 < SHM->beep_emit_status)
+		{
+			SHM->beep_emit_status--;
+		}
+
+		pthread_mutex_unlock(&SHM->beep_mutex_status);
+#if 1
 		pthread_mutex_lock(&SHM->beep_mutex_end);
 		beep_flag = (0 == SHM->beep_emit_end);
 
@@ -84,7 +91,7 @@ void *beep_thread_handler(void *arg)
 		{
 			pthread_cond_broadcast(&SHM->beep_cond_end);
 		}
-
+#endif
 		usleep(100000);
 	}
 }

@@ -18,19 +18,25 @@ void *led_thread_handler(void *arg)
 			pthread_cond_wait(&SHM->led_cond_start, &SHM->led_mutex_start);
 		}
 
-		led_flag = SHM->led_emit_status;
-
-		if (0 < led_flag)
-		{
-			SHM->led_emit_status--;
-		}
-
 		SHM->led_emit_start--;
 		pthread_mutex_unlock(&SHM->led_mutex_start);
+
+		pthread_mutex_lock(&SHM->led_mutex_status);
+		led_flag = SHM->led_emit_status;
+		pthread_mutex_unlock(&SHM->led_mutex_status);
 
 		if (0 == led_flag)
 		{
 			ioctl(*((int *)arg), LED_OFF, 0);
+
+			pthread_mutex_lock(&SHM->led_mutex_status);
+
+			if (0 < SHM->led_emit_status)
+			{
+				SHM->led_emit_status--;
+			}
+
+			pthread_mutex_unlock(&SHM->led_mutex_status);
 		}
 		else if (0 < led_flag)
 		{

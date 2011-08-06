@@ -25,8 +25,12 @@ struct shm
 	pthread_mutex_t led_mutex_end;
 	pthread_cond_t led_cond_end;
 
+	pthread_mutex_t led_mutex_status;
+
 	pthread_mutex_t cgi_mutex_start;
 	pthread_cond_t cgi_cond_start;
+
+	pthread_mutex_t status_mutex_temperature;
 
 	int gprs_emit_start;
 	int gprs_emit_end;
@@ -41,6 +45,8 @@ struct shm
 
 	int cgi_emit_start;
 	char cgi_cmd[MAXCMDLEN];
+
+	int status_temperature;
 }*SHM;
 
 #endif
