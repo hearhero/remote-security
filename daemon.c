@@ -6,7 +6,7 @@
 void init_daemon(void)
 {
 	pid_t pid;
-	//int i;
+	int i;
 
 	if (-1 == (pid = fork()))
 	{
@@ -30,7 +30,7 @@ void init_daemon(void)
 		exit(0);
 	}
 
-#if 0
+#if 1
 	for (i = 0; i < getdtablesize(); i++)
 	{
 		close(i);

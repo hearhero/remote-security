@@ -58,10 +58,18 @@ void *status_thread_handler(void *arg)
 			buf[3] = '\0';
 			write(*((int *)arg), buf, 3);
 		}
-		else if (0 <= temperature && 100 > temperature)
+		else if (10 <= temperature && 100 > temperature)
 		{
 			buf[0] = temperature / 10 + 0x30;
 			buf[1] = temperature % 10 + 0x30;
+			buf[2] = 0x20;
+			buf[3] = '\0';
+			write(*((int *)arg), buf, 3);
+		}
+		else if (0 <= temperature && 9 >= temperature)
+		{
+			buf[0] = temperature + 0x30;
+			buf[1] = 0x20;
 			buf[2] = 0x20;
 			buf[3] = '\0';
 			write(*((int *)arg), buf, 3);

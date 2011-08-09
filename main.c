@@ -244,13 +244,13 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 
-	if (-1 == (fd_phone = open("/gprs.phone", O_RDONLY)))
+	if (-1 == (fd_phone = open("/bin/gprs.phone", O_RDONLY)))
 	{
 		perror("Failed to open gprs.phone");
 		exit(-1);
 	}
 
-	if (-1 == (fd_ada = open("/gprs.ada", O_RDONLY)))
+	if (-1 == (fd_ada = open("/bin/gprs.ada", O_RDONLY)))
 	{
 		perror("Failed to open gprs.ada");
 		exit(-1);

@@ -100,20 +100,26 @@ bool termios_init(int fd, struct termios *tio, int baud)
 bool gprs_init(int fd, const char *cmd[], int count)
 {
 	int i;
+
+#ifdef _DEBUG_GPRS_
 	char reply[256];
+#endif
 
 	for (i = 0; i < count; i++)
 	{
 		write(fd, cmd[i], strlen(cmd[i]));
 		usleep(500000);
+
+#ifdef _DEBUG_GPRS_
 		memset(reply, 0, sizeof(reply));
 		read(fd, reply, 256);
-		//printf("%s\n", reply);
+		printf("%s\n", reply);
 
 		if (NULL == strstr(reply, "OK")) 
 		{
 			return false;
 		}
+#endif
 	}
 
 	return true;
@@ -122,30 +128,39 @@ bool gprs_init(int fd, const char *cmd[], int count)
 //send PDU message
 bool message_send(int fd, char *cmd, int cmdlen, char *msg, int msglen)
 {
+#ifdef _DEBUG_GPRS_
 	char reply[256];
+#endif
 
 	write(fd, cmd, cmdlen);
+
 #ifdef _DEBUG_GPRS_
 	printf("%s\n", cmd);
 #endif
+
 	usleep(500000);
 	tcflush(fd, TCIFLUSH);
 
 	write(fd, msg, msglen);
+
 #ifdef _DEBUG_GPRS_
 	printf("%s\n", msg);
 #endif
-	usleep(1000000);
-	//memset(reply, 0, sizeof(reply));
-	//read(fd, reply, 256);
+
+	usleep(5000000);
+
 #ifdef _DEBUG_GPRS_
+	memset(reply, 0, sizeof(reply));
+	read(fd, reply, 256);
 	printf("%s\n", reply);
 #endif
 
+#ifdef _DEBUG_GPRS_
 	if (NULL == strstr(reply, "OK")) 
 	{
 		return false;
 	}
+#endif
 
 	return true;
 }
